@@ -1,0 +1,35 @@
+# 应用运行配置：数据库地址、用户名、密码和服务端口统一在这里修改。
+spring:
+  application:
+    name: workHelper
+  datasource:
+    # 格式：jdbc:mysql://主机:端口/数据库名?连接参数
+    url: 'jdbc:mysql://127.0.0.1:3306/work_helper?useUnicode=true&characterEncoding=UTF-8&connectionTimeZone=Asia/Shanghai'
+    # 填写本机 MySQL 账号和密码，密码保留引号。
+    username: 'root'
+    password: '1234'
+    hikari:
+      connection-timeout: 5000
+  flyway:
+    enabled: true
+  jackson:
+    time-zone: "${app.time-zone}"
+
+server:
+  address: 127.0.0.1
+  port: 8080
+  error:
+    include-message: never
+    include-stacktrace: never
+
+app:
+  time-zone: Asia/Shanghai
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
