@@ -39,3 +39,29 @@ export const stages = [
 ]
 export const stageName = (stage: string) => stages.find(([key]) => key === stage)?.[1] || stage
 export const dateText = (date: string) => date.replace('T', ' ').slice(0, 16)
+
+export type ProcessStage = 'ASSESSMENT' | 'WRITTEN_TEST' | 'INTERVIEW_1' | 'INTERVIEW_2' | 'INTERVIEW_3' | 'OFFER' | 'REJECTED' | 'WITHDRAWN'
+export type TimeMode = 'SCHEDULED' | 'DEADLINE' | 'RECORD_ONLY'
+export type ProcessStatus = 'PENDING' | 'COMPLETED' | 'CANCELLED'
+export interface ProcessInput {
+  stage: ProcessStage
+  roundName: string
+  timeMode: TimeMode
+  startAt: string | null
+  endAt: string | null
+  deadlineAt: string | null
+  status: ProcessStatus
+  location: string
+  notes: string
+  occurredAt: string
+}
+export interface ProcessRecord extends ProcessInput {
+  id: number
+  applicationId: number
+  createdAt: string
+  updatedAt: string
+}
+export const statusNames: Record<ProcessStatus, string> = { PENDING: '待完成', COMPLETED: '已完成', CANCELLED: '已取消' }
+export function businessNow(timeZone: string) {
+  return new Intl.DateTimeFormat('sv-SE', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).format(new Date()).replace(' ', 'T')
+}

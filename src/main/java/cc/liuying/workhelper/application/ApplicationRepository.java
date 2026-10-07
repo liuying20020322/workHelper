@@ -15,7 +15,7 @@ public class ApplicationRepository {
     private static final RowMapper<JobApplication> MAPPER = (rs, row) -> new JobApplication(
             rs.getLong("id"), rs.getString("company_name"), rs.getString("position_name"),
             rs.getString("location"), rs.getString("requirements"), rs.getObject("applied_at", LocalDateTime.class),
-            rs.getString("channel"), rs.getString("job_url"), rs.getString("notes"), "APPLIED",
+            rs.getString("channel"), rs.getString("job_url"), rs.getString("notes"), rs.getString("current_stage"),
             rs.getObject("created_at", LocalDateTime.class), rs.getObject("updated_at", LocalDateTime.class));
 
     public ApplicationRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }

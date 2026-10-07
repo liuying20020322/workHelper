@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import ProcessPanel from '../components/ProcessPanel.vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { dateText, request, stageName, stages, type ApplicationInput, type JobApplication } from '../api'
 
@@ -60,6 +61,16 @@ async function load() {
     if (version === loadVersion) loadError.value = (error as Error).message
   } finally { if (version === loadVersion) loading.value = false }
 }
+async function refreshApplication(item: JobApplication) {
+  try {
+    const latest = await request<JobApplication>(`/api/applications/${item.id}`)
+    Object.assign(item, latest)
+    if (stage.value && latest.currentStage !== stage.value) {
+      items.value = items.value.filter(row => row.id !== item.id)
+      ElMessage.info('阶段已更新，该投递不再符合当前筛选条件')
+    }
+  } catch (error) { loadError.value = (error as Error).message }
+}
 function resetFilters() { search.value = ''; stage.value = ''; void load() }
 async function openForm(item?: JobApplication) {
   editingId.value = item?.id ?? null
@@ -85,7 +96,7 @@ async function save() {
 }
 async function remove(item: JobApplication) {
   try {
-    await ElMessageBox.confirm(`确定删除「${item.companyName} · ${item.positionName}」吗？此操作不可撤销，关联的流程、安排和面试问答也将一并删除（当前阶段尚无关联记录）。`, '删除投递', { confirmButtonText: '确认删除', cancelButtonText: '保留记录', type: 'warning' })
+    await ElMessageBox.confirm(`确定删除「${item.companyName} · ${item.positionName}」吗？此操作不可撤销，关联的流程、安排和面试问答也将一并删除。`, '删除投递', { confirmButtonText: '确认删除', cancelButtonText: '保留记录', type: 'warning' })
   } catch { return }
   deleting.value = item.id
   try {
@@ -138,7 +149,7 @@ onMounted(async () => {
             <div v-if="openedJobs.has(item.id)" class="job-detail">
               <div class="detail-title">职位信息<span>编号 #{{ item.id }}</span></div>
               <dl class="detail-grid"><div><dt>投递渠道</dt><dd>{{ item.channel || '未填写' }}</dd></div><div><dt>职位链接</dt><dd><a v-if="/^https?:\/\//i.test(item.jobUrl)" :href="item.jobUrl" target="_blank" rel="noopener noreferrer">查看原始职位 ↗</a><span v-else>未填写</span></dd></div><div class="full"><dt>职位要求</dt><dd>{{ item.requirements || '暂无职位要求，可在编辑中补充。' }}</dd></div><div class="full"><dt>备注</dt><dd>{{ item.notes || '暂无备注' }}</dd></div></dl>
-              <div class="process-placeholder"><strong>流程记录</strong><span>暂无流程记录，当前阶段为已投递。</span><small>流程 / 安排录入将在下一阶段开放</small></div>
+              <ProcessPanel :application-id="item.id" :time-zone="timeZone" @changed="refreshApplication(item)" />
               <div class="updated-at">最近更新 {{ dateText(item.updatedAt) }}</div>
             </div>
           </article>

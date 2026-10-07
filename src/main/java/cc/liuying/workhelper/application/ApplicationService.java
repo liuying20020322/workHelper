@@ -26,9 +26,7 @@ public class ApplicationService {
         if (search.length() > 200) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "搜索内容最多200字");
         if (!stage.isEmpty() && !STAGES.contains(stage))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "无效的投递阶段");
-        // No process records exist in phase one, so every application is APPLIED.
-        if (!stage.isEmpty() && !stage.equals("APPLIED")) return List.of();
-        return repository.findAll(search.strip());
+        return repository.findAll(search.strip()).stream().filter(item -> stage.isEmpty() || item.currentStage().equals(stage)).toList();
     }
 
     public JobApplication get(long id) {
