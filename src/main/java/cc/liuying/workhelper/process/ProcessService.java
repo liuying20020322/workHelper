@@ -3,6 +3,7 @@ package cc.liuying.workhelper.process;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import cc.liuying.workhelper.common.DataWriteLock;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
@@ -14,8 +15,9 @@ import java.util.List;
 public class ProcessService {
     private final ProcessRepository repository;
     private final ZoneId zone;
-    public ProcessService(ProcessRepository repository,@Value("${app.time-zone}") String zone) {
-        this.repository=repository; this.zone=ZoneId.of(zone);
+    private final DataWriteLock writes;
+    public ProcessService(ProcessRepository repository,DataWriteLock writes,@Value("${app.time-zone}") String zone) {
+        this.repository=repository; this.writes=writes; this.zone=ZoneId.of(zone);
     }
     public List<ProcessRecord> list(long appId) {
         if(!repository.applicationExists(appId)) throw missing();
@@ -24,6 +26,7 @@ public class ProcessService {
     public ProcessRecord get(long appId,long id) { return repository.get(appId,id).orElseThrow(ProcessService::missing); }
     @Transactional
     public ProcessRecord create(long appId,ProcessRequest r) {
+        writes.changed();
         lock(appId);
         var now=LocalDateTime.now(zone);
         long id=repository.insert(appId,normalize(r,now),now);
@@ -32,6 +35,7 @@ public class ProcessService {
     }
     @Transactional
     public ProcessRecord update(long appId,long id,ProcessRequest r) {
+        writes.changed();
         lock(appId);
         var existing=get(appId,id);
         require(r.stage().isInterview() || !existing.hasInterview(),"此流程已有面经，不能改为非面试阶段；请先在面经详情清空总结和问答并保存");
@@ -42,6 +46,7 @@ public class ProcessService {
     }
     @Transactional
     public ProcessRecord status(long appId,long id,ProcessRequest.Status status) {
+        writes.changed();
         lock(appId); get(appId,id);
         var now=LocalDateTime.now(zone);
         repository.status(appId,id,status,now);
@@ -50,6 +55,7 @@ public class ProcessService {
     }
     @Transactional
     public void delete(long appId,long id) {
+        writes.changed();
         lock(appId); get(appId,id);
         repository.delete(appId,id);
         recalculate(appId,LocalDateTime.now(zone));
@@ -60,13 +66,14 @@ public class ProcessService {
         if(!valid) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,message);
     }
     private void recalculate(long appId,LocalDateTime now) {
-        var records=repository.list(appId);
+        repository.setStage(appId,calculateStage(repository.list(appId)),now);
+    }
+    public static String calculateStage(List<ProcessRecord> records) {
         // Cancellation cancels an appointment, not the recruiting stage. Ties resolve by stable ID.
-        String current=records.stream().filter(r -> r.stage().isResult())
+        return records.stream().filter(r -> r.stage().isResult())
                 .max(Comparator.comparing(ProcessRecord::occurredAt).thenComparingLong(ProcessRecord::id))
                 .map(r -> r.stage().name()).orElseGet(() -> records.stream().map(ProcessRecord::stage)
                         .max(Comparator.naturalOrder()).map(Enum::name).orElse("APPLIED"));
-        repository.setStage(appId,current,now);
     }
     private ProcessRequest normalize(ProcessRequest r,LocalDateTime fallback) {
         var start=r.startAt(); var end=r.endAt(); var deadline=r.deadlineAt();

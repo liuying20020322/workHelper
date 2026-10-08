@@ -38,4 +38,5 @@ build/
 /frontend/.npm-cache/
 *.tsbuildinfo
 /logs/
+/backups/
 /.local-tools/

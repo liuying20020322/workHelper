@@ -3,6 +3,7 @@ package cc.liuying.workhelper.application;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import cc.liuying.workhelper.common.DataWriteLock;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
@@ -16,9 +17,10 @@ public class ApplicationService {
             "INTERVIEW_2", "INTERVIEW_3", "OFFER", "REJECTED", "WITHDRAWN");
     private final ApplicationRepository repository;
     private final ZoneId zone;
+    private final DataWriteLock writes;
 
-    public ApplicationService(ApplicationRepository repository, @Value("${app.time-zone}") String zone) {
-        this.repository = repository;
+    public ApplicationService(ApplicationRepository repository, DataWriteLock writes, @Value("${app.time-zone}") String zone) {
+        this.repository = repository; this.writes = writes;
         this.zone = ZoneId.of(zone);
     }
 
@@ -35,12 +37,14 @@ public class ApplicationService {
 
     @Transactional
     public JobApplication create(ApplicationRequest request) {
+        writes.changed();
         var now = LocalDateTime.now(zone);
         return get(repository.insert(normalize(request, now), now));
     }
 
     @Transactional
     public JobApplication update(long id, ApplicationRequest request) {
+        writes.changed();
         var existing = get(id);
         if (repository.update(id, normalize(request, existing.appliedAt()), LocalDateTime.now(zone)) == 0)
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "投递记录不存在或已被删除");
@@ -49,6 +53,7 @@ public class ApplicationService {
 
     @Transactional
     public void delete(long id) {
+        writes.changed();
         if (repository.delete(id) == 0)
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "投递记录不存在或已被删除");
     }

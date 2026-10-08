@@ -1,6 +1,8 @@
 @echo off
 setlocal
 cd /d "%~dp0"
+powershell.exe -NoProfile -Command "if (Test-Path -LiteralPath 'target/workHelper.jar') { try { $jarCheck = [System.IO.File]::Open('target/workHelper.jar', 'Open', 'ReadWrite', 'None'); $jarCheck.Dispose() } catch { Write-Host 'Cannot replace target/workHelper.jar. Stop the running workHelper service before building.'; exit 1 } }"
+if errorlevel 1 exit /b 1
 where node >nul 2>nul
 if errorlevel 1 (
   echo Node.js is required for building. Install Node.js 22.12+ or 24 LTS.

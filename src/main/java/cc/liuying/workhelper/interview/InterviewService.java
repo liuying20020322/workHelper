@@ -7,6 +7,7 @@ import cc.liuying.workhelper.process.ProcessRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import cc.liuying.workhelper.common.DataWriteLock;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import java.time.Clock;
@@ -21,8 +22,9 @@ public class InterviewService {
     private final ProcessRepository processes;
     private final ApplicationService applications;
     private final Clock clock;
-    public InterviewService(JdbcTemplate jdbc,ProcessRepository processes,ApplicationService applications,Clock clock) {
-        this.jdbc=jdbc; this.processes=processes; this.applications=applications; this.clock=clock;
+    private final DataWriteLock writes;
+    public InterviewService(JdbcTemplate jdbc,ProcessRepository processes,ApplicationService applications,Clock clock,DataWriteLock writes) {
+        this.jdbc=jdbc; this.processes=processes; this.applications=applications; this.clock=clock; this.writes=writes;
     }
     public record Question(long id,String question,String answer,String review,int sortOrder,LocalDateTime createdAt,LocalDateTime updatedAt) {}
     public record Detail(JobApplication application,ProcessRecord process,String timeZone,String summary,long version,List<Question> questions) {}
@@ -42,6 +44,7 @@ public class InterviewService {
     }
     @Transactional
     public Detail save(long appId,long processId,InterviewController.Input input) {
+        writes.changed();
         // Same parent lock as process updates/deletes; serialize changes to this interview and its stage.
         if(!processes.lockApplication(appId)) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"投递不存在");
         requireInterview(appId,processId);

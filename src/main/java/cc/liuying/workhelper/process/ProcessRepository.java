@@ -35,6 +35,9 @@ public class ProcessRepository {
     public List<ProcessRecord> list(long appId) {
         return jdbc.query("SELECT * FROM application_process WHERE application_id=? ORDER BY occurred_at DESC, id DESC", MAPPER, appId);
     }
+    public List<ProcessRecord> listAll() {
+        return jdbc.query("SELECT * FROM application_process ORDER BY id", MAPPER);
+    }
     public Optional<ProcessRecord> get(long appId, long id) {
         return jdbc.query("SELECT * FROM application_process WHERE application_id=? AND id=?", MAPPER, appId, id).stream().findFirst();
     }
