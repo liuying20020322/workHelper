@@ -34,6 +34,7 @@ public class ProcessService {
     public ProcessRecord update(long appId,long id,ProcessRequest r) {
         lock(appId);
         var existing=get(appId,id);
+        require(r.stage().isInterview() || !existing.hasInterview(),"此流程已有面经，不能改为非面试阶段；请先在面经详情清空总结和问答并保存");
         var now=LocalDateTime.now(zone);
         repository.update(appId,id,normalize(r,existing.occurredAt()),now);
         recalculate(appId,now);

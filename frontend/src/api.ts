@@ -56,6 +56,7 @@ export interface ProcessInput {
   occurredAt: string
 }
 export interface ProcessRecord extends ProcessInput {
+  hasInterview: boolean
   id: number
   applicationId: number
   createdAt: string

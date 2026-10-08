@@ -20,7 +20,8 @@ public class ProcessRepository {
             rs.getObject("start_at", LocalDateTime.class), rs.getObject("end_at", LocalDateTime.class),
             rs.getObject("deadline_at", LocalDateTime.class), ProcessRequest.Status.valueOf(rs.getString("status")),
             rs.getString("location"), rs.getString("notes"), rs.getObject("occurred_at", LocalDateTime.class),
-            rs.getObject("created_at", LocalDateTime.class), rs.getObject("updated_at", LocalDateTime.class));
+            rs.getObject("created_at", LocalDateTime.class), rs.getObject("updated_at", LocalDateTime.class),
+            rs.getInt("question_count") > 0 || (rs.getString("interview_summary") != null && !rs.getString("interview_summary").isBlank()));
 
     public ProcessRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; this.named = new NamedParameterJdbcTemplate(jdbc); }
 

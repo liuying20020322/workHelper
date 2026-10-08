@@ -46,7 +46,7 @@ async function changeStatus(record: ProcessRecord, status: ProcessStatus) {
   finally { busyId.value = null }
 }
 async function remove(record: ProcessRecord) {
-  try { await ElMessageBox.confirm(`删除「${record.roundName || stageName(record.stage)}」后，对应安排一并删除，投递阶段会重新计算。此操作不可撤销。`, '删除流程', { confirmButtonText: '确认删除', cancelButtonText: '保留记录', type: 'warning' }) }
+  try { await ElMessageBox.confirm(`删除「${record.roundName || stageName(record.stage)}」后，对应安排、面试总结和问答一并删除，投递阶段会重新计算。此操作不可撤销。`, '删除流程', { confirmButtonText: '确认删除', cancelButtonText: '保留记录', type: 'warning' }) }
   catch { return }
   busyId.value = record.id
   try {
@@ -78,7 +78,7 @@ onMounted(load)
         <p v-if="record.location" class="process-copy">地点 / 链接：<a v-if="/^https?:\/\/[^\s]+$/i.test(record.location)" :href="record.location" target="_blank" rel="noopener noreferrer">{{ record.location }}</a><span v-else>{{ record.location }}</span></p>
         <p v-if="record.notes" class="process-copy">{{ record.notes }}</p>
         <p class="muted">阶段发生：{{ dateText(record.occurredAt) }}</p>
-        <div class="process-actions"><el-button v-if="record.status === 'PENDING'" size="small" :disabled="busyId !== null" @click="changeStatus(record, 'COMPLETED')">标记完成</el-button><el-button v-else size="small" :disabled="busyId !== null" @click="changeStatus(record, 'PENDING')">恢复待完成</el-button><el-button size="small" :disabled="busyId !== null" @click="open(record)">编辑 / 改期</el-button><el-button v-if="record.status !== 'CANCELLED'" size="small" :disabled="busyId !== null" @click="changeStatus(record, 'CANCELLED')">取消安排</el-button><el-button size="small" type="danger" plain :disabled="busyId !== null" @click="remove(record)">删除</el-button></div>
+        <div class="process-actions"><RouterLink v-if="record.stage.startsWith('INTERVIEW_')" class="primary-link" :to="`/applications/${applicationId}/processes/${record.id}/interview`">{{ record.hasInterview ? '查看面经' : '记录面经' }}</RouterLink><el-button v-if="record.status === 'PENDING'" size="small" :disabled="busyId !== null" @click="changeStatus(record, 'COMPLETED')">标记完成</el-button><el-button v-else size="small" :disabled="busyId !== null" @click="changeStatus(record, 'PENDING')">恢复待完成</el-button><el-button size="small" :disabled="busyId !== null" @click="open(record)">编辑 / 改期</el-button><el-button v-if="record.status !== 'CANCELLED'" size="small" :disabled="busyId !== null" @click="changeStatus(record, 'CANCELLED')">取消安排</el-button><el-button size="small" type="danger" plain :disabled="busyId !== null" @click="remove(record)">删除</el-button></div>
       </li>
     </ol>
     <p class="process-help">阶段表示已进入该环节；完成安排不会自动进入下一阶段。取消安排保留阶段，删除流程会重新计算。</p>
