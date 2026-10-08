@@ -33,7 +33,7 @@ try {
     } catch { }
     if ($existing) {
         Write-Host "workHelper is already running at $url"
-        if (-not $NoBrowser) { Start-Process "$url/#/applications" }
+        if (-not $NoBrowser) { Start-Process "$url/#/home" }
         exit 0
     }
     $probe = New-Object System.Net.Sockets.TcpClient
@@ -62,8 +62,8 @@ try {
                 $ready = $health.status -eq 'UP' -and $info.application -eq 'workHelper'
             } catch { }
             if ($ready) {
-                Write-Host "Ready: $url/#/applications"
-                if (-not $NoBrowser) { Start-Process "$url/#/applications" }
+                Write-Host "Ready: $url/#/home"
+                if (-not $NoBrowser) { Start-Process "$url/#/home" }
             } elseif ((Get-Date) -gt $deadline) { throw 'Startup timed out (90 seconds). Check MySQL service, database name, credentials and port in src/main/resources/application.yml.' }
         }
         Start-Sleep -Milliseconds 500

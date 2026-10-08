@@ -1,9 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import ProcessPanel from '../components/ProcessPanel.vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { dateText, request, stageName, stages, type ApplicationInput, type JobApplication } from '../api'
 
+const route = useRoute()
+const linkedProcessId = computed(() => {
+  const value = Number(route.query.processId)
+  return Number.isSafeInteger(value) && value > 0 ? value : undefined
+})
 const items = ref<JobApplication[]>([])
 const search = ref('')
 const stage = ref('')
@@ -107,8 +113,25 @@ async function remove(item: JobApplication) {
   } catch (error) { ElMessage.error((error as Error).message) }
   finally { deleting.value = null }
 }
+async function revealLinkedApplication() {
+  const id = Number(route.query.applicationId)
+  if (!Number.isSafeInteger(id) || id <= 0 || loadError.value) return
+  const item = items.value.find(row => row.id === id)
+  if (!item) { ElMessage.info('关联投递已不存在，可能已被删除'); return }
+  closedCompanies.value.delete(item.companyName)
+  openedJobs.value.add(id)
+  await nextTick()
+  document.getElementById(`application-${id}`)?.scrollIntoView({ block: 'start' })
+}
+watch(() => [route.query.applicationId, route.query.processId], async () => {
+  search.value = ''
+  stage.value = ''
+  await load()
+  await revealLinkedApplication()
+})
 onMounted(async () => {
-  void load()
+  await load()
+  await revealLinkedApplication()
   try { timeZone.value = (await request<{ timeZone: string }>('/api/info')).timeZone }
   catch { /* The list request displays connection errors. */ }
 })
@@ -140,7 +163,7 @@ onMounted(async () => {
           <span class="company-avatar">{{ group.company.slice(0, 1) }}</span><span class="company-name">{{ group.company }}</span><span class="count-tag">{{ group.jobs.length }} 个投递</span><span class="chevron">{{ closedCompanies.has(group.company) ? '＋' : '−' }}</span>
         </button>
         <div v-if="!closedCompanies.has(group.company)" class="jobs">
-          <article v-for="item in group.jobs" :key="item.id" class="job">
+          <article v-for="item in group.jobs" :key="item.id" :id="`application-${item.id}`" class="job" style="scroll-margin-top: 100px">
             <div class="job-row">
               <button class="job-toggle" :aria-expanded="openedJobs.has(item.id)" @click="toggleJob(item.id)"><span class="arrow">{{ openedJobs.has(item.id) ? '⌄' : '›' }}</span><span><strong>{{ item.positionName }}</strong><span class="job-meta">{{ item.location || '地点待补充' }}<span>·</span>{{ dateText(item.appliedAt) }} 投递</span></span></button>
               <el-tag effect="plain" round>{{ stageName(item.currentStage) }}</el-tag>
@@ -149,7 +172,7 @@ onMounted(async () => {
             <div v-if="openedJobs.has(item.id)" class="job-detail">
               <div class="detail-title">职位信息<span>编号 #{{ item.id }}</span></div>
               <dl class="detail-grid"><div><dt>投递渠道</dt><dd>{{ item.channel || '未填写' }}</dd></div><div><dt>职位链接</dt><dd><a v-if="/^https?:\/\//i.test(item.jobUrl)" :href="item.jobUrl" target="_blank" rel="noopener noreferrer">查看原始职位 ↗</a><span v-else>未填写</span></dd></div><div class="full"><dt>职位要求</dt><dd>{{ item.requirements || '暂无职位要求，可在编辑中补充。' }}</dd></div><div class="full"><dt>备注</dt><dd>{{ item.notes || '暂无备注' }}</dd></div></dl>
-              <ProcessPanel :application-id="item.id" :time-zone="timeZone" @changed="refreshApplication(item)" />
+              <ProcessPanel :application-id="item.id" :time-zone="timeZone" :highlight-id="Number(route.query.applicationId) === item.id ? linkedProcessId : undefined" @changed="refreshApplication(item)" />
               <div class="updated-at">最近更新 {{ dateText(item.updatedAt) }}</div>
             </div>
           </article>

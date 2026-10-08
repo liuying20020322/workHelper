@@ -11,7 +11,7 @@ import Home from './pages/Home.vue'
 const router = createRouter({
   history: createWebHashHistory(),
   routes: [
-    { path: '/', redirect: '/applications' },
+    { path: '/', redirect: '/home' },
     { path: '/applications', component: Applications },
     { path: '/home', component: Home },
     { path: '/:pathMatch(.*)*', redirect: '/applications' },

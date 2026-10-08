@@ -14,7 +14,7 @@ import java.util.Optional;
 public class ProcessRepository {
     private final JdbcTemplate jdbc;
     private final NamedParameterJdbcTemplate named;
-    private static final RowMapper<ProcessRecord> MAPPER = (rs, i) -> new ProcessRecord(
+    static final RowMapper<ProcessRecord> MAPPER = (rs, i) -> new ProcessRecord(
             rs.getLong("id"), rs.getLong("application_id"), Stage.valueOf(rs.getString("stage")),
             rs.getString("round_name"), ProcessRequest.TimeMode.valueOf(rs.getString("time_mode")),
             rs.getObject("start_at", LocalDateTime.class), rs.getObject("end_at", LocalDateTime.class),

@@ -65,3 +65,22 @@ export const statusNames: Record<ProcessStatus, string> = { PENDING: '待完成'
 export function businessNow(timeZone: string) {
   return new Intl.DateTimeFormat('sv-SE', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).format(new Date()).replace(' ', 'T')
 }
+
+export interface Reminder {
+  process: ProcessRecord
+  companyName: string
+  positionName: string
+  jobLocation: string
+  effectiveAt: string
+  overdue: boolean
+  inProgress: boolean
+  dayLabel: string
+}
+export interface ReminderPage {
+  timeZone: string
+  today: string
+  throughDate: string
+  now: string
+  overdue: Reminder[]
+  items: Reminder[]
+}
