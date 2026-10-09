@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 
-interface Counts { applications: number; processes: number; questions: number }
+interface Counts { applications: number; processes: number; questions: number; unappliedCompanies: number }
 interface Preview { sha256: string; currentRevision: number; timeZone: string; exportedAt: string; incoming: Counts; current: Counts }
 interface SafetyFile { name: string; bytes: number; createdAt: string }
 const emit = defineEmits<{ restored: []; closed: [] }>()
@@ -69,7 +69,7 @@ async function restore() {
       'Content-Type': 'application/json', 'X-Backup-Revision': String(preview.value.currentRevision),
       'X-Backup-SHA256': preview.value.sha256, 'X-Backup-Confirmation': 'REPLACE_ALL',
     }, body: file.value })).json()
-    success.value = `恢复成功：${result.restored.applications} 条投递、${result.restored.processes} 条流程、${result.restored.questions} 条问答。恢复前自动备份：${result.safetyBackup}`
+    success.value = `恢复成功：${result.restored.applications} 条投递、${result.restored.processes} 条流程、${result.restored.questions} 条问答、${result.restored.unappliedCompanies} 条未投记录。恢复前自动备份：${result.safetyBackup}`
     emit('restored')
   } catch (e) { error.value = (e as Error).message }
   finally { preview.value = undefined; confirmation.value = ''; busy.value = ''; await listSafety() }
@@ -82,14 +82,14 @@ onMounted(listSafety)
   <el-dialog v-model="open" title="备份与恢复" width="min(760px, 94vw)" :close-on-click-modal="false" :before-close="close" @closed="emit('closed')">
     <el-alert v-if="error" :title="error" type="error" :closable="false" show-icon class="notice" />
     <el-alert v-if="success" :title="success" type="success" :closable="false" show-icon class="notice" />
-    <section class="backup-section"><h3>导出当前数据</h3><p>包含全部投递、流程、安排、面试总结和问答。备份文件含个人求职记录，请保存到可靠的位置。</p><el-button type="primary" :loading="busy === 'download'" :disabled="!!busy" @click="download()">下载 JSON 备份</el-button></section>
+    <section class="backup-section"><h3>导出当前数据</h3><p>包含全部投递、流程、安排、面试总结、问答和看过未投记录。备份文件含个人求职记录，请保存到可靠的位置。</p><el-button type="primary" :loading="busy === 'download'" :disabled="!!busy" @click="download()">下载 JSON 备份</el-button></section>
     <section class="backup-section"><h3>从备份恢复</h3><p>恢复会替换全部现有业务数据，不是合并。请先保存当前页面和其他标签页中的修改，并关闭其他编辑页面；恢复成功后当前页面会重新载入数据。</p><p>覆盖前会自动备份到本地 backups 目录；自动备份失败则停止，恢复失败则回滚。</p>
       <label class="file-label" for="backup-file">选择 JSON 备份（最多 32 MB）</label><input id="backup-file" type="file" accept=".json,application/json" :disabled="!!busy" @change="select" />
       <el-button :disabled="!file || !!busy" :loading="busy === 'preview'" @click="validate">校验备份</el-button>
       <template v-if="preview">
         <p class="muted">备份导出于 {{ new Date(preview.exportedAt).toLocaleString('zh-CN', { timeZone: preview.timeZone }) }} · {{ preview.timeZone }}</p>
-        <table class="counts"><caption>恢复前后数据数量</caption><thead><tr><th>数据</th><th>当前</th><th>恢复后</th></tr></thead><tbody><tr><th>投递</th><td>{{ preview.current.applications }}</td><td>{{ preview.incoming.applications }}</td></tr><tr><th>流程 / 安排</th><td>{{ preview.current.processes }}</td><td>{{ preview.incoming.processes }}</td></tr><tr><th>问答</th><td>{{ preview.current.questions }}</td><td>{{ preview.incoming.questions }}</td></tr></tbody></table>
-        <el-alert v-if="preview.incoming.applications === 0" title="这是空备份，恢复后将清空全部业务数据。" type="warning" :closable="false" class="notice" />
+        <table class="counts"><caption>恢复前后数据数量</caption><thead><tr><th>数据</th><th>当前</th><th>恢复后</th></tr></thead><tbody><tr><th>投递</th><td>{{ preview.current.applications }}</td><td>{{ preview.incoming.applications }}</td></tr><tr><th>流程 / 安排</th><td>{{ preview.current.processes }}</td><td>{{ preview.incoming.processes }}</td></tr><tr><th>问答</th><td>{{ preview.current.questions }}</td><td>{{ preview.incoming.questions }}</td></tr><tr><th>看过未投</th><td>{{ preview.current.unappliedCompanies }}</td><td>{{ preview.incoming.unappliedCompanies }}</td></tr></tbody></table>
+        <el-alert v-if="preview.incoming.applications === 0 && preview.incoming.unappliedCompanies === 0" title="这是空备份，恢复后将清空全部业务数据。" type="warning" :closable="false" class="notice" />
         <label class="file-label" for="restore-confirmation">确认替换：输入“替换全部数据”</label><el-input id="restore-confirmation" v-model="confirmation" :disabled="!!busy" placeholder="替换全部数据" autocomplete="off" />
         <el-button class="restore-button" type="danger" :loading="busy === 'restore'" :disabled="!!busy || confirmation !== '替换全部数据'" @click="restore">确认替换并恢复</el-button>
       </template>

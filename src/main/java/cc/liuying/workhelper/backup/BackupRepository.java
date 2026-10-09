@@ -16,7 +16,9 @@ public class BackupRepository {
     private final ApplicationRepository applications;
     private final ProcessRepository processes;
     private final Clock clock;
-    public BackupRepository(JdbcTemplate jdbc,ApplicationRepository applications,ProcessRepository processes,Clock clock) {
+    private final cc.liuying.workhelper.unapplied.UnappliedRepository unapplied;
+    public BackupRepository(JdbcTemplate jdbc,ApplicationRepository applications,ProcessRepository processes,Clock clock,cc.liuying.workhelper.unapplied.UnappliedRepository unapplied) {
+        this.unapplied=unapplied;
         this.jdbc=jdbc; this.applications=applications; this.processes=processes; this.clock=clock;
     }
     public BackupData snapshot() {
@@ -28,12 +30,15 @@ public class BackupRepository {
         var questions=jdbc.query("SELECT * FROM interview_question ORDER BY process_id,sort_order,id",(rs,i) ->
                 new BackupData.QuestionData(rs.getLong("id"),rs.getLong("process_id"),rs.getString("question"),rs.getString("answer"),rs.getString("review"),
                         rs.getInt("sort_order"),rs.getObject("created_at",LocalDateTime.class),rs.getObject("updated_at",LocalDateTime.class)));
-        return new BackupData("workHelper-backup",1,clock.instant(),clock.getZone().getId(),applications.findAll(""),entries,questions);
+        return new BackupData("workHelper-backup",2,clock.instant(),clock.getZone().getId(),applications.findAll(""),entries,questions,unapplied.list("",null));
     }
     public void replace(BackupData data) {
         // Never TRUNCATE or alter auto-increment here: MySQL DDL would break rollback guarantees.
         long previousVersion=jdbc.queryForObject("SELECT COALESCE(MAX(interview_version),0) FROM application_process",Long.class);
         long restoredVersion=Math.max(previousVersion,data.processes().stream().mapToLong(BackupData.ProcessData::interviewVersion).max().orElse(0))+1;
+        jdbc.update("DELETE FROM unapplied_company");
+        batch("INSERT INTO unapplied_company(id,company_name,reason,other_reason,viewed_date,created_at,updated_at) VALUES(?,?,?,?,?,?,?)",
+                data.unappliedCompanies().stream().map(r->new Object[]{r.id(),r.companyName(),r.reason(),r.otherReason(),r.viewedDate(),r.createdAt(),r.updatedAt()}).toList());
         jdbc.update("DELETE FROM job_application");
         var grouped=data.processes().stream().map(BackupData.ProcessData::record).collect(Collectors.groupingBy(p -> p.applicationId()));
         batch("""

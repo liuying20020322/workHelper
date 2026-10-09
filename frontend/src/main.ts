@@ -7,6 +7,7 @@ import './style.css'
 import App from './App.vue'
 import Applications from './pages/Applications.vue'
 import Home from './pages/Home.vue'
+import Unapplied from './pages/Unapplied.vue'
 import Interview from './pages/Interview.vue'
 
 const router = createRouter({
@@ -15,6 +16,7 @@ const router = createRouter({
     { path: '/', redirect: '/home' },
     { path: '/applications', component: Applications },
     { path: '/home', component: Home },
+    { path: '/unapplied', component: Unapplied },
     { path: '/applications/:applicationId/processes/:processId/interview', component: Interview },
     { path: '/:pathMatch(.*)*', redirect: '/applications' },
   ],

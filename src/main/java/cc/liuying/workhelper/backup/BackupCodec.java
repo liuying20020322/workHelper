@@ -33,6 +33,7 @@ public class BackupCodec {
         BackupData data;
         try { data=json.readValue(bytes,BackupData.class); }
         catch (RuntimeException e) { throw invalid("备份 JSON 格式或字段不正确，请使用本工具导出的完整文件"); }
+        if(data!=null && data.version()==1 && data.unappliedCompanies()==null) data=new BackupData(data.format(),data.version(),data.exportedAt(),data.timeZone(),data.applications(),data.processes(),data.questions(),List.of());
         validate(data);
         return data;
     }
@@ -47,11 +48,20 @@ public class BackupCodec {
         catch (java.security.NoSuchAlgorithmException e) { throw new IllegalStateException(e); }
     }
     private void validate(BackupData d) {
-        check(d!=null && "workHelper-backup".equals(d.format()) && d.version()==1,"不支持的备份类型或版本，仅支持 workHelper 版本 1 备份");
+        check(d!=null && "workHelper-backup".equals(d.format()) && (d.version()==1 || d.version()==2),"不支持的备份类型或版本，仅支持 workHelper 版本 1、2 备份");
         check(d.exportedAt()!=null,"备份缺少导出时间");
         check(clock.getZone().getId().equals(d.timeZone()),"备份业务时区与当前配置不一致，请先核对并调整应用时区，再恢复");
         check(d.applications()!=null && d.processes()!=null && d.questions()!=null,"备份缺少投递、流程或问答列表");
         check(d.applications().size()<=100000 && d.processes().size()<=100000 && d.questions().size()<=100000,"单类记录不能超过十万条");
+        check(d.unappliedCompanies()!=null && d.unappliedCompanies().size()<=100000,"备份缺少未投记录列表或超过十万条");
+        check(d.version()!=1 || d.unappliedCompanies().isEmpty(),"版本1不能包含未投记录");
+        Set<Long> unappliedIds=new HashSet<>(); Set<String> companies=new HashSet<>();
+        for(var r:d.unappliedCompanies()) {
+            check(r!=null,"未投记录不能为 null"); id(r.id()); check(unappliedIds.add(r.id()),"未投记录编号重复");
+            cc.liuying.workhelper.unapplied.UnappliedService.validate(new cc.liuying.workhelper.unapplied.UnappliedRequest(r.companyName(),r.reason(),r.otherReason(),r.viewedDate()));
+            check(r.companyName().equals(r.companyName().strip()) && companies.add(r.companyName()),"未投公司名称未规范化或重复");
+            date(r.createdAt());date(r.updatedAt());
+        }
         Set<Long> apps=new HashSet<>();
         for(var a:d.applications()) {
             check(a!=null,"投递记录不能为 null"); id(a.id()); check(apps.add(a.id()),"投递编号重复");

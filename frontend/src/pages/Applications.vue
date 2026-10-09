@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { reasonText, type UnappliedCompany } from '../api'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import ProcessPanel from '../components/ProcessPanel.vue'
@@ -89,6 +90,7 @@ async function save() {
   saving.value = true
   saveError.value = ''
   try {
+    const isNew = editingId.value === null
     const saved = await request<JobApplication>(editingId.value === null ? '/api/applications' : `/api/applications/${editingId.value}`, {
       method: editingId.value === null ? 'POST' : 'PUT', body: JSON.stringify(form.value),
     })
@@ -97,8 +99,20 @@ async function save() {
     openedJobs.value.add(saved.id)
     ElMessage.success(editingId.value === null ? '投递已添加' : '投递已更新')
     await load()
+    if (isNew) await checkUnapplied(saved.companyName)
   } catch (error) { saveError.value = (error as Error).message }
   finally { saving.value = false }
+}
+async function checkUnapplied(companyName: string) {
+  let match: UnappliedCompany | undefined
+  try {
+    const records = await request<UnappliedCompany[]>(`/api/unapplied-companies?${new URLSearchParams({ search: companyName })}`)
+    match = records.find(row => row.companyName === companyName)
+  } catch { ElMessage.warning('投递已保存，但未投记录检查失败，请到“看过未投”中核对。'); return }
+  if (!match) return
+  try { await ElMessageBox.confirm(`「${match.companyName}」在 ${match.viewedDate} 有一条未投记录，原因：${reasonText(match)}。投递已保存，是否删除这条未投记录？`, '投递已保存', { confirmButtonText: '删除未投记录', cancelButtonText: '暂时保留', type: 'info' }) } catch { return }
+  try { await request(`/api/unapplied-companies/${match.id}`, { method: 'DELETE' }); ElMessage.success('未投记录已删除') }
+  catch (e) { ElMessage.error(`投递已保存，未投记录删除失败：${(e as Error).message}`) }
 }
 async function remove(item: JobApplication) {
   try {

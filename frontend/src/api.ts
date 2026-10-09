@@ -85,3 +85,8 @@ export interface ReminderPage {
   overdue: Reminder[]
   items: Reminder[]
 }
+
+export interface UnappliedCompany { id: number; companyName: string; reason: string; otherReason: string; viewedDate: string; createdAt: string; updatedAt: string }
+export type UnappliedInput = Omit<UnappliedCompany, 'id' | 'createdAt' | 'updatedAt'>
+export const unappliedReasons = [['CET4', '要求英语四级'], ['CET6', '要求英语六级'], ['NO_POSITION', '没有合适岗位'], ['EDUCATION', '学历不符合'], ['EXPERIENCE', '经验不符合'], ['LOCATION', '工作地点不合适'], ['OTHER', '其他']]
+export const reasonText = (r: UnappliedCompany) => (unappliedReasons.find(([key]) => key === r.reason)?.[1] || r.reason) + (r.reason === 'OTHER' ? '：' + r.otherReason : '')
